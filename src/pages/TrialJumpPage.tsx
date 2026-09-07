@@ -69,6 +69,38 @@ export default function TrialJumpPage({
     setIsCameraActive(false);
   }, []);
 
+  // Synchronize video element and auto-play when videoUrl changes
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !videoUrl) return;
+
+    video.srcObject = null;
+    video.src = videoUrl;
+    video.loop = true;
+    video.muted = true;
+    video.playbackRate = isSlowMo ? 0.5 : 1.0;
+
+    const handleLoadedData = () => {
+      video
+        .play()
+        .then(() => {
+          setIsPlaying(true);
+          startProcessing();
+        })
+        .catch((err) => {
+          console.warn('Autoplay prevented or delayed:', err);
+          setIsPlaying(false);
+        });
+    };
+
+    video.addEventListener('loadeddata', handleLoadedData, { once: true });
+    video.load();
+
+    return () => {
+      video.removeEventListener('loadeddata', handleLoadedData);
+    };
+  }, [videoUrl, startProcessing]);
+
   // Handle uploaded video file
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -78,23 +110,23 @@ export default function TrialJumpPage({
     setCameraError(null);
     setUploadedFileName(file.name);
 
+    if (videoUrl && videoUrl.startsWith('blob:')) {
+      URL.revokeObjectURL(videoUrl);
+    }
+
     const url = URL.createObjectURL(file);
     setVideoUrl(url);
+    resetAnalysis();
 
-    const video = videoRef.current;
-    if (video) {
-      video.srcObject = null;
-      video.src = url;
-      video.loop = true;
-      video.playbackRate = isSlowMo ? 0.5 : 1.0;
-      video.load();
-      setIsPlaying(false);
-      resetAnalysis();
-    }
+    // Reset input value so re-uploading the same file works
+    e.target.value = '';
   };
 
   // Start Live Camera
   const startCamera = async () => {
+    if (videoUrl && videoUrl.startsWith('blob:')) {
+      URL.revokeObjectURL(videoUrl);
+    }
     setVideoUrl(null);
     setUploadedFileName(null);
     stopProcessing();
@@ -133,6 +165,9 @@ export default function TrialJumpPage({
     stopCameraStream();
     stopProcessing();
     resetAnalysis();
+    if (videoUrl && videoUrl.startsWith('blob:')) {
+      URL.revokeObjectURL(videoUrl);
+    }
     setVideoUrl(null);
     setUploadedFileName(null);
     setIsPlaying(false);
@@ -140,8 +175,15 @@ export default function TrialJumpPage({
 
     const video = videoRef.current;
     if (video) {
+      video.pause();
       video.srcObject = null;
-      video.src = '';
+      video.removeAttribute('src');
+      video.load();
+    }
+    const canvas = canvasRef.current;
+    if (canvas) {
+      const ctx = canvas.getContext('2d');
+      if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
     }
   };
 
@@ -396,55 +438,61 @@ export default function TrialJumpPage({
                     </div>
                   )}
 
-                  {/* MODE A: If video is loaded or camera active -> render real video + canvas */}
-                  {isVideoLoaded ? (
-                    <>
-                      <video
-                        ref={videoRef}
-                        playsInline
-                        muted
-                        onPlay={() => setIsPlaying(true)}
-                        onPause={() => setIsPlaying(false)}
-                        className="w-full h-full object-contain"
-                      />
+                  {/* Real Video Element (always mounted in DOM to guarantee ref availability) */}
+                  <video
+                    ref={videoRef}
+                    playsInline
+                    muted
+                    loop
+                    onPlay={() => setIsPlaying(true)}
+                    onPause={() => setIsPlaying(false)}
+                    className={`w-full h-full object-contain ${
+                      isVideoLoaded ? 'block z-10' : 'hidden'
+                    }`}
+                  />
 
-                      <canvas
-                        ref={canvasRef}
-                        className="absolute inset-0 pointer-events-none w-full h-full object-contain"
-                      />
+                  {/* Real MediaPipe Pose Canvas Overlay */}
+                  <canvas
+                    ref={canvasRef}
+                    className={`absolute inset-0 pointer-events-none w-full h-full object-contain z-20 ${
+                      isVideoLoaded ? 'block' : 'hidden'
+                    }`}
+                  />
 
-                      {/* Real-time HUD Badges */}
-                      <div className="absolute top-3 left-3 right-3 flex items-center justify-between pointer-events-none z-10">
-                        {/* Phase Badge */}
-                        <div
-                          className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border backdrop-blur-md ${currentPhaseStyle.bg} ${currentPhaseStyle.border}`}
+                  {/* Real-time HUD Badges */}
+                  {isVideoLoaded && (
+                    <div className="absolute top-3 left-3 right-3 flex items-center justify-between pointer-events-none z-30">
+                      {/* Phase Badge */}
+                      <div
+                        className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border backdrop-blur-md ${currentPhaseStyle.bg} ${currentPhaseStyle.border}`}
+                      >
+                        <span
+                          className={`w-2 h-2 rounded-full ${
+                            telemetry.phase === 'FLIGHT'
+                              ? 'bg-pink-400 animate-ping'
+                              : 'bg-emerald-400'
+                          }`}
+                        />
+                        <span
+                          className={`text-xs font-bold font-mono tracking-wider ${currentPhaseStyle.text}`}
                         >
-                          <span
-                            className={`w-2 h-2 rounded-full ${
-                              telemetry.phase === 'FLIGHT'
-                                ? 'bg-pink-400 animate-ping'
-                                : 'bg-emerald-400'
-                            }`}
-                          />
-                          <span
-                            className={`text-xs font-bold font-mono tracking-wider ${currentPhaseStyle.text}`}
-                          >
-                            PHASE: {telemetry.phase}
-                          </span>
-                        </div>
-
-                        {/* AI Confidence Badge */}
-                        <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-navy-900/80 border border-navy-700/60 backdrop-blur-md">
-                          <Bot className="w-3.5 h-3.5 text-sky-400" />
-                          <span className="text-xs font-mono text-slate-300 font-semibold">
-                            {telemetry.aiConfidence}% AI Conf
-                          </span>
-                        </div>
+                          PHASE: {telemetry.phase}
+                        </span>
                       </div>
-                    </>
-                  ) : (
-                    /* MODE B: Default Placeholder SVG Demo */
-                    <div className="relative w-full h-full flex flex-col items-center justify-center p-6">
+
+                      {/* AI Confidence Badge */}
+                      <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-navy-900/80 border border-navy-700/60 backdrop-blur-md">
+                        <Bot className="w-3.5 h-3.5 text-sky-400" />
+                        <span className="text-xs font-mono text-slate-300 font-semibold">
+                          {telemetry.aiConfidence}% AI Conf
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* MODE B: Default Placeholder SVG Demo */}
+                  {!isVideoLoaded && (
+                    <div className="relative w-full h-full flex flex-col items-center justify-center p-6 z-10">
                       {/* Scanning animation bar */}
                       <div className="absolute inset-0 z-20 pointer-events-none">
                         <div className="absolute inset-x-0 h-1 bg-gradient-to-r from-transparent via-sky-400 to-transparent animate-scan shadow-glow-blue" />

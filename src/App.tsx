@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import type { PageName, AssessmentType } from '@/data/mockData';
+import type { PageName, AssessmentType, TrialResult } from '@/data/mockData';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import HomePage from '@/pages/HomePage';
@@ -16,6 +16,7 @@ function App() {
   const [currentPage, setCurrentPage] = useState<PageName>('home');
   const [selectedAthleteId, setSelectedAthleteId] = useState<string>('TS-1024');
   const [selectedTrial, setSelectedTrial] = useState<AssessmentType>('jump');
+  const [latestTrialResult, setLatestTrialResult] = useState<TrialResult | null>(null);
 
   const handleNavigate = (page: PageName) => {
     setCurrentPage(page);
@@ -58,9 +59,19 @@ function App() {
       case 'trial-select':
         return <TrialSelectPage onNavigate={handleNavigate} onSelectTrial={handleSelectTrial} />;
       case 'trial-jump':
-        return <TrialJumpPage onNavigate={handleNavigate} />;
+        return (
+          <TrialJumpPage
+            onNavigate={handleNavigate}
+            onTrialComplete={(res) => setLatestTrialResult(res)}
+          />
+        );
       case 'results':
-        return <ResultsPage onNavigate={handleNavigate} />;
+        return (
+          <ResultsPage
+            onNavigate={handleNavigate}
+            trialResult={latestTrialResult}
+          />
+        );
       case 'profile':
         return <ProfilePage onNavigate={handleNavigate} athleteId={selectedAthleteId} />;
       default:

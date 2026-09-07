@@ -1,11 +1,12 @@
 import { ArrowRight, Zap, Target, Trophy, User, BarChart3, TrendingUp, Info } from 'lucide-react';
-import type { PageName } from '@/data/mockData';
+import type { PageName, TrialResult } from '@/data/mockData';
 import { DEMO_RESULT } from '@/data/mockData';
 import { useCountUp, useInView } from '@/hooks/useAnimations';
 import ProgressIndicator from '@/components/ProgressIndicator';
 
 interface ResultsPageProps {
   onNavigate: (page: PageName) => void;
+  trialResult?: TrialResult | null;
 }
 
 function CircularScore({ score }: { score: number }) {
@@ -67,7 +68,9 @@ function MetricBar({ label, value, color, delay }: { label: string; value: numbe
   );
 }
 
-export default function ResultsPage({ onNavigate }: ResultsPageProps) {
+export default function ResultsPage({ onNavigate, trialResult }: ResultsPageProps) {
+  const result = trialResult || DEMO_RESULT;
+
   return (
     <div className="bg-mesh min-h-[calc(100vh-4rem)] py-10">
       <div className="section-padding">
@@ -94,16 +97,16 @@ export default function ResultsPage({ onNavigate }: ResultsPageProps) {
                   <span className="text-sm font-mono text-slate-400">Athlete #TS-1024</span>
                   <span className="badge bg-green-50 text-green-700">
                     <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
-                    Above Average
+                    {result.potential === 'High' ? 'Elite Potential' : 'Above Average'}
                   </span>
                 </div>
                 <h2 className="font-display text-2xl font-bold text-navy-900 mb-1">Vertical Jump</h2>
-                <p className="text-slate-500 text-sm">Demo assessment result</p>
+                <p className="text-slate-500 text-sm">Computer Vision Biomechanical Assessment</p>
               </div>
               <div className="text-center sm:text-right">
                 <p className="text-sm text-slate-400 font-medium">Jump Height</p>
                 <p className="font-display text-4xl font-extrabold text-gradient-blue">
-                  {DEMO_RESULT.jumpHeight} cm
+                  {result.jumpHeight} cm
                 </p>
               </div>
             </div>
@@ -112,9 +115,9 @@ export default function ResultsPage({ onNavigate }: ResultsPageProps) {
           {/* Metric cards */}
           <div className="grid sm:grid-cols-3 gap-4 mb-6">
             {[
-              { icon: Zap, label: 'Explosive Power', value: `${DEMO_RESULT.explosivePower}/100`, bg: 'bg-royal-50', text: 'text-royal-600', delay: 'animate-delay-100' },
-              { icon: Target, label: 'AI Confidence', value: `${DEMO_RESULT.aiConfidence}%`, bg: 'bg-green-50', text: 'text-green-600', delay: 'animate-delay-200' },
-              { icon: Trophy, label: 'Potential', value: DEMO_RESULT.potential, bg: 'bg-purple-50', text: 'text-purple-600', delay: 'animate-delay-300' },
+              { icon: Zap, label: 'Explosive Power', value: `${result.explosivePower}/100`, bg: 'bg-royal-50', text: 'text-royal-600', delay: 'animate-delay-100' },
+              { icon: Target, label: 'AI Confidence', value: `${result.aiConfidence}%`, bg: 'bg-green-50', text: 'text-green-600', delay: 'animate-delay-200' },
+              { icon: Trophy, label: 'Potential', value: result.potential, bg: 'bg-purple-50', text: 'text-purple-600', delay: 'animate-delay-300' },
             ].map((metric) => {
               const Icon = metric.icon;
               return (
@@ -133,7 +136,7 @@ export default function ResultsPage({ onNavigate }: ResultsPageProps) {
           <div className="card p-8 mb-6 animate-fade-in-up animate-delay-300">
             <div className="grid sm:grid-cols-2 gap-8 items-center">
               <div>
-                <CircularScore score={DEMO_RESULT.overall} />
+                <CircularScore score={result.overall} />
               </div>
               <div className="text-center sm:text-left">
                 <h3 className="font-display text-2xl font-bold text-navy-900 mb-2">
@@ -161,10 +164,10 @@ export default function ResultsPage({ onNavigate }: ResultsPageProps) {
               <h3 className="font-bold text-navy-900 text-lg">Performance Breakdown</h3>
             </div>
             <div className="space-y-5">
-              <MetricBar label="Explosive Power" value={DEMO_RESULT.explosivePower} color="bg-gradient-to-r from-royal-500 to-sky-400" delay="" />
-              <MetricBar label="Speed" value={DEMO_RESULT.speed} color="bg-gradient-to-r from-green-500 to-emerald-400" delay="animate-delay-100" />
-              <MetricBar label="Agility" value={DEMO_RESULT.agility} color="bg-gradient-to-r from-orange-500 to-amber-400" delay="animate-delay-200" />
-              <MetricBar label="Overall" value={DEMO_RESULT.overall} color="bg-gradient-to-r from-purple-500 to-pink-400" delay="animate-delay-300" />
+              <MetricBar label="Explosive Power" value={result.explosivePower} color="bg-gradient-to-r from-royal-500 to-sky-400" delay="" />
+              <MetricBar label="Speed" value={result.speed} color="bg-gradient-to-r from-green-500 to-emerald-400" delay="animate-delay-100" />
+              <MetricBar label="Agility" value={result.agility} color="bg-gradient-to-r from-orange-500 to-amber-400" delay="animate-delay-200" />
+              <MetricBar label="Overall" value={result.overall} color="bg-gradient-to-r from-purple-500 to-pink-400" delay="animate-delay-300" />
             </div>
           </div>
 

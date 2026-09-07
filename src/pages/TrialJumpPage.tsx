@@ -25,13 +25,13 @@ interface TrialJumpPageProps {
   onTrialComplete?: (result: TrialResult) => void;
 }
 
-type VideoSourceMode = 'sample' | 'upload' | 'camera';
+type VideoSourceMode = 'sample-1' | 'sample-2' | 'upload' | 'camera';
 
 export default function TrialJumpPage({
   onNavigate,
   onTrialComplete,
 }: TrialJumpPageProps) {
-  const [sourceMode, setSourceMode] = useState<VideoSourceMode>('sample');
+  const [sourceMode, setSourceMode] = useState<VideoSourceMode>('sample-1');
   const [isPlaying, setIsPlaying] = useState(false);
   const [isSlowMo, setIsSlowMo] = useState(false);
   const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
@@ -75,12 +75,20 @@ export default function TrialJumpPage({
       const video = videoRef.current;
       if (!video) return;
 
-      if (mode === 'sample') {
+      if (mode === 'sample-1') {
         video.srcObject = null;
         video.src = '/sample-jump.mp4';
         video.loop = true;
         video.playbackRate = isSlowMo ? 0.5 : 1.0;
         video.load();
+        setUploadedFileName(null);
+      } else if (mode === 'sample-2') {
+        video.srcObject = null;
+        video.src = '/jumping-athlete-2.mp4';
+        video.loop = true;
+        video.playbackRate = isSlowMo ? 0.5 : 1.0;
+        video.load();
+        setUploadedFileName(null);
       } else if (mode === 'upload') {
         video.srcObject = null;
         video.loop = true;
@@ -113,7 +121,7 @@ export default function TrialJumpPage({
 
   // Initialize with sample video on mount
   useEffect(() => {
-    switchSource('sample');
+    switchSource('sample-1');
     return () => {
       stopCameraStream();
     };
@@ -287,18 +295,31 @@ export default function TrialJumpPage({
 
           {/* Mode Selector */}
           <div className="card p-3 mb-6 flex flex-wrap items-center justify-between gap-3 animate-fade-in-up animate-delay-150">
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
-                onClick={() => switchSource('sample')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
-                  sourceMode === 'sample'
+                onClick={() => switchSource('sample-1')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
+                  sourceMode === 'sample-1'
                     ? 'bg-royal-600 text-white shadow-md shadow-royal-600/30'
                     : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                 }`}
               >
                 <Video className="w-4 h-4" />
-                Sample Jump Clip
+                Clip 1: Basketball (Portrait)
+              </button>
+
+              <button
+                type="button"
+                onClick={() => switchSource('sample-2')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
+                  sourceMode === 'sample-2'
+                    ? 'bg-royal-600 text-white shadow-md shadow-royal-600/30'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
+              >
+                <Video className="w-4 h-4" />
+                Clip 2: Track Athlete (16:9)
               </button>
 
               <button
@@ -307,7 +328,7 @@ export default function TrialJumpPage({
                   switchSource('upload');
                   fileInputRef.current?.click();
                 }}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
                   sourceMode === 'upload'
                     ? 'bg-royal-600 text-white shadow-md shadow-royal-600/30'
                     : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
@@ -320,7 +341,7 @@ export default function TrialJumpPage({
               <button
                 type="button"
                 onClick={() => switchSource('camera')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
                   sourceMode === 'camera'
                     ? 'bg-royal-600 text-white shadow-md shadow-royal-600/30'
                     : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
@@ -389,7 +410,7 @@ export default function TrialJumpPage({
                         {cameraError}. You can switch to the Sample Jump Clip or upload a video instead.
                       </p>
                       <button
-                        onClick={() => switchSource('sample')}
+                        onClick={() => switchSource('sample-1')}
                         className="btn-primary text-xs"
                       >
                         Use Sample Jump Clip
@@ -472,7 +493,12 @@ export default function TrialJumpPage({
                     </div>
 
                     <span className="text-xs text-slate-400 font-mono">
-                      {uploadedFileName || (sourceMode === 'sample' ? 'sample-jump.mp4' : '')}
+                      {uploadedFileName ||
+                        (sourceMode === 'sample-1'
+                          ? 'Basketball (360x640)'
+                          : sourceMode === 'sample-2'
+                          ? 'Track Athlete (1280x720)'
+                          : '')}
                     </span>
                   </div>
                 )}

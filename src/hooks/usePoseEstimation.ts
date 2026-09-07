@@ -216,13 +216,20 @@ export function usePoseEstimation(
             // Squat initiation: knee bends below 140° or hip descends
             if (kneeAngle < 140 && baselineHipYRef.current !== null) {
               phaseRef.current = 'SQUAT';
+            } else if (
+              baselineAnkleYRef.current !== null &&
+              baselineAnkleYRef.current - midAnkleY > 0.02
+            ) {
+              // Direct takeoff without deep countermovement
+              phaseRef.current = 'FLIGHT';
+              takeoffTimeRef.current = currentTime;
             }
           }
           // Phase 2: SQUAT (Preparation)
           else if (currentPhase === 'SQUAT') {
-            // Check for Takeoff: ankles lift above baseline by at least 2.5% of height
+            // Check for Takeoff: ankles lift above baseline by at least 2% of height
             const baseline = baselineAnkleYRef.current ?? 0.85;
-            if (baseline - midAnkleY > 0.025) {
+            if (baseline - midAnkleY > 0.02) {
               phaseRef.current = 'FLIGHT';
               takeoffTimeRef.current = currentTime;
             }
@@ -234,12 +241,14 @@ export function usePoseEstimation(
               minHipYRef.current = midHipY;
             }
 
-            // Check for Landing: ankles return near baseline
+            // Check for Landing: ankles return near baseline or hips descend from apex
             const baseline = baselineAnkleYRef.current ?? 0.85;
             if (
               takeoffTimeRef.current !== null &&
-              currentTime - takeoffTimeRef.current > 0.15 &&
-              midAnkleY >= baseline - 0.015
+              currentTime - takeoffTimeRef.current > 0.12 &&
+              (midAnkleY >= baseline - 0.02 ||
+                (minHipYRef.current < 9000 &&
+                  midHipY > minHipYRef.current + 0.04))
             ) {
               phaseRef.current = 'LANDED';
               landingTimeRef.current = currentTime;

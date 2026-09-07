@@ -3,7 +3,6 @@ import {
   ArrowRight,
   Bot,
   Camera,
-  Video,
   Upload,
   Play,
   Pause,
@@ -11,9 +10,9 @@ import {
   Sparkles,
   Gauge,
   Timer,
-  Zap,
   CheckCircle2,
   AlertCircle,
+  X,
 } from 'lucide-react';
 import type { PageName, TrialResult } from '@/data/mockData';
 import ProgressIndicator from '@/components/ProgressIndicator';
@@ -25,17 +24,25 @@ interface TrialJumpPageProps {
   onTrialComplete?: (result: TrialResult) => void;
 }
 
-type VideoSourceMode = 'sample-1' | 'sample-2' | 'upload' | 'camera';
+const READINESS = [
+  { label: 'Camera stable & level', color: 'text-green-500' },
+  { label: 'Full body (head to feet) in frame', color: 'text-green-500' },
+  { label: 'Standing 3-4 meters away', color: 'text-green-500' },
+  { label: 'Good lighting & contrast', color: 'text-green-500' },
+];
 
 export default function TrialJumpPage({
   onNavigate,
   onTrialComplete,
 }: TrialJumpPageProps) {
-  const [sourceMode, setSourceMode] = useState<VideoSourceMode>('sample-1');
+  // Video source state: null = placeholder SVG demo mode
+  const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
+  const [isCameraActive, setIsCameraActive] = useState(false);
+  const [cameraError, setCameraError] = useState<string | null>(null);
+
   const [isPlaying, setIsPlaying] = useState(false);
   const [isSlowMo, setIsSlowMo] = useState(false);
-  const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
-  const [cameraError, setCameraError] = useState<string | null>(null);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -46,7 +53,6 @@ export default function TrialJumpPage({
   const {
     modelStatus,
     telemetry,
-    isAnalyzing,
     startProcessing,
     stopProcessing,
     resetAnalysis,
@@ -54,77 +60,13 @@ export default function TrialJumpPage({
     athleteWeightKg: 65,
   });
 
-  // Stop camera stream when leaving
+  // Stop live camera stream
   const stopCameraStream = useCallback(() => {
     if (cameraStreamRef.current) {
       cameraStreamRef.current.getTracks().forEach((track) => track.stop());
       cameraStreamRef.current = null;
     }
-  }, []);
-
-  // Switch video source
-  const switchSource = useCallback(
-    async (mode: VideoSourceMode) => {
-      setSourceMode(mode);
-      setIsPlaying(false);
-      stopProcessing();
-      resetAnalysis();
-      stopCameraStream();
-      setCameraError(null);
-
-      const video = videoRef.current;
-      if (!video) return;
-
-      if (mode === 'sample-1') {
-        video.srcObject = null;
-        video.src = '/sample-jump.mp4';
-        video.loop = true;
-        video.playbackRate = isSlowMo ? 0.5 : 1.0;
-        video.load();
-        setUploadedFileName(null);
-      } else if (mode === 'sample-2') {
-        video.srcObject = null;
-        video.src = '/jumping-athlete-2.mp4';
-        video.loop = true;
-        video.playbackRate = isSlowMo ? 0.5 : 1.0;
-        video.load();
-        setUploadedFileName(null);
-      } else if (mode === 'upload') {
-        video.srcObject = null;
-        video.loop = true;
-      } else if (mode === 'camera') {
-        video.src = '';
-        try {
-          const stream = await navigator.mediaDevices.getUserMedia({
-            video: {
-              facingMode: 'user',
-              width: { ideal: 1280 },
-              height: { ideal: 720 },
-            },
-            audio: false,
-          });
-          cameraStreamRef.current = stream;
-          video.srcObject = stream;
-          await video.play();
-          setIsPlaying(true);
-          startProcessing();
-        } catch (err: any) {
-          console.error('Camera access failed:', err);
-          setCameraError(
-            err.message || 'Camera permission denied or camera unavailable'
-          );
-        }
-      }
-    },
-    [isSlowMo, resetAnalysis, startProcessing, stopCameraStream, stopProcessing]
-  );
-
-  // Initialize with sample video on mount
-  useEffect(() => {
-    switchSource('sample-1');
-    return () => {
-      stopCameraStream();
-    };
+    setIsCameraActive(false);
   }, []);
 
   // Handle uploaded video file
@@ -132,10 +74,15 @@ export default function TrialJumpPage({
     const file = e.target.files?.[0];
     if (!file) return;
 
+    stopCameraStream();
+    setCameraError(null);
     setUploadedFileName(file.name);
+
+    const url = URL.createObjectURL(file);
+    setVideoUrl(url);
+
     const video = videoRef.current;
     if (video) {
-      const url = URL.createObjectURL(file);
       video.srcObject = null;
       video.src = url;
       video.loop = true;
@@ -143,6 +90,58 @@ export default function TrialJumpPage({
       video.load();
       setIsPlaying(false);
       resetAnalysis();
+    }
+  };
+
+  // Start Live Camera
+  const startCamera = async () => {
+    setVideoUrl(null);
+    setUploadedFileName(null);
+    stopProcessing();
+    resetAnalysis();
+    setCameraError(null);
+
+    const video = videoRef.current;
+    if (!video) return;
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: 'user',
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+        },
+        audio: false,
+      });
+      cameraStreamRef.current = stream;
+      video.srcObject = stream;
+      await video.play();
+      setIsCameraActive(true);
+      setIsPlaying(true);
+      startProcessing();
+    } catch (err: any) {
+      console.error('Camera access failed:', err);
+      setCameraError(
+        err.message || 'Camera permission denied or camera hardware unavailable'
+      );
+      setIsCameraActive(false);
+    }
+  };
+
+  // Reset back to placeholder SVG demo
+  const handleResetToPlaceholder = () => {
+    stopCameraStream();
+    stopProcessing();
+    resetAnalysis();
+    setVideoUrl(null);
+    setUploadedFileName(null);
+    setIsPlaying(false);
+    setCameraError(null);
+
+    const video = videoRef.current;
+    if (video) {
+      video.srcObject = null;
+      video.src = '';
     }
   };
 
@@ -172,7 +171,7 @@ export default function TrialJumpPage({
     if (video) {
       video.currentTime = 0;
       resetAnalysis();
-      if (!isPlaying && sourceMode !== 'camera') {
+      if (!isPlaying && !isCameraActive) {
         video.play();
         setIsPlaying(true);
         startProcessing();
@@ -192,15 +191,14 @@ export default function TrialJumpPage({
 
   // Finalize & Navigate to Results
   const handleCompleteTrial = () => {
-    // If flight was detected, use real calculated height; otherwise provide sample calibrated calculation
     const measuredHeight =
-      telemetry.calculatedHeight > 10
+      telemetry.calculatedHeight > 0
         ? telemetry.calculatedHeight
         : Math.round(
             calculateFlightJumpHeight(
               telemetry.flightDuration > 0 ? telemetry.flightDuration : 0.58
             ) * 10
-          ) / 10 || 42.4;
+          ) / 10 || 41;
 
     const { watts, score: powerScore } = calculateSayersPower(
       measuredHeight,
@@ -208,7 +206,7 @@ export default function TrialJumpPage({
     );
 
     const confidence =
-      telemetry.aiConfidence > 50 ? telemetry.aiConfidence : 89;
+      telemetry.aiConfidence > 50 ? telemetry.aiConfidence : 90;
 
     const computedResult: TrialResult = {
       jumpHeight: Math.round(measuredHeight),
@@ -220,7 +218,7 @@ export default function TrialJumpPage({
       potential:
         measuredHeight >= 40
           ? 'High'
-          : measuredHeight >= 32
+          : measuredHeight >= 30
           ? 'Medium'
           : 'Low',
     };
@@ -230,6 +228,13 @@ export default function TrialJumpPage({
     }
     onNavigate('results');
   };
+
+  // Cleanup camera stream on unmount
+  useEffect(() => {
+    return () => {
+      stopCameraStream();
+    };
+  }, [stopCameraStream]);
 
   // Phase badge color mapping
   const phaseColors: Record<string, { bg: string; text: string; border: string }> = {
@@ -268,6 +273,8 @@ export default function TrialJumpPage({
   const currentPhaseStyle =
     phaseColors[telemetry.phase] || phaseColors.STAND;
 
+  const isVideoLoaded = Boolean(videoUrl || isCameraActive);
+
   return (
     <div className="bg-mesh min-h-[calc(100vh-4rem)] py-8">
       <div className="section-padding">
@@ -279,7 +286,7 @@ export default function TrialJumpPage({
               Real-Time Edge Computer Vision
             </div>
             <h1 className="font-display text-3xl sm:text-4xl font-bold text-navy-900 mb-1">
-              AI Vertical Jump Assessment
+              Vertical Jump Assessment
             </h1>
             <p className="text-slate-500 text-sm sm:text-base">
               Autonomous 33-point skeletal landmark detection and flight-time kinematic analysis
@@ -293,46 +300,13 @@ export default function TrialJumpPage({
             />
           </div>
 
-          {/* Mode Selector */}
+          {/* Action Header / Upload bar */}
           <div className="card p-3 mb-6 flex flex-wrap items-center justify-between gap-3 animate-fade-in-up animate-delay-150">
             <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
-                onClick={() => switchSource('sample-1')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
-                  sourceMode === 'sample-1'
-                    ? 'bg-royal-600 text-white shadow-md shadow-royal-600/30'
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                }`}
-              >
-                <Video className="w-4 h-4" />
-                Clip 1: Basketball (Portrait)
-              </button>
-
-              <button
-                type="button"
-                onClick={() => switchSource('sample-2')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
-                  sourceMode === 'sample-2'
-                    ? 'bg-royal-600 text-white shadow-md shadow-royal-600/30'
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                }`}
-              >
-                <Video className="w-4 h-4" />
-                Clip 2: Track Athlete (16:9)
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  switchSource('upload');
-                  fileInputRef.current?.click();
-                }}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
-                  sourceMode === 'upload'
-                    ? 'bg-royal-600 text-white shadow-md shadow-royal-600/30'
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                }`}
+                onClick={() => fileInputRef.current?.click()}
+                className="btn-primary text-xs sm:text-sm px-4 py-2 flex items-center gap-2"
               >
                 <Upload className="w-4 h-4" />
                 Upload Athlete Video
@@ -340,9 +314,9 @@ export default function TrialJumpPage({
 
               <button
                 type="button"
-                onClick={() => switchSource('camera')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
-                  sourceMode === 'camera'
+                onClick={startCamera}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
+                  isCameraActive
                     ? 'bg-royal-600 text-white shadow-md shadow-royal-600/30'
                     : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                 }`}
@@ -350,6 +324,17 @@ export default function TrialJumpPage({
                 <Camera className="w-4 h-4" />
                 Live Camera
               </button>
+
+              {isVideoLoaded && (
+                <button
+                  type="button"
+                  onClick={handleResetToPlaceholder}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold text-rose-600 hover:bg-rose-50 transition-all border border-rose-200"
+                >
+                  <X className="w-4 h-4" />
+                  Clear Video
+                </button>
+              )}
 
               <input
                 ref={fileInputRef}
@@ -377,85 +362,190 @@ export default function TrialJumpPage({
             </div>
           </div>
 
-          {/* Main Video + Telemetry Grid */}
+          {/* Main Stage Grid */}
           <div className="grid lg:grid-cols-3 gap-6 animate-fade-in-up animate-delay-200">
-            {/* Video Player & Canvas Stage */}
+            {/* Left Col: Video Player or Placeholder SVG Demo */}
             <div className="lg:col-span-2">
               <div className="card p-3 overflow-hidden bg-navy-950 border border-navy-800 shadow-2xl">
-                <div className="relative aspect-[4/3] sm:aspect-video bg-navy-900 rounded-xl overflow-hidden flex items-center justify-center">
-                  {/* HTML5 Video Element */}
-                  <video
-                    ref={videoRef}
-                    playsInline
-                    muted
-                    onPlay={() => setIsPlaying(true)}
-                    onPause={() => setIsPlaying(false)}
-                    className="w-full h-full object-contain"
-                  />
+                <div className="relative aspect-[4/3] sm:aspect-video bg-gradient-to-b from-navy-900 to-navy-800 rounded-xl overflow-hidden flex items-end justify-center">
+                  {/* Grid background overlay */}
+                  <div className="absolute inset-0 bg-grid opacity-20 pointer-events-none" />
 
-                  {/* High-Precision Real-time Canvas Skeleton Overlay */}
-                  <canvas
-                    ref={canvasRef}
-                    className="absolute inset-0 pointer-events-none w-full h-full object-contain"
-                  />
+                  {/* Corner Targets */}
+                  <div className="absolute top-3 left-3 w-8 h-8 border-l-2 border-t-2 border-sky-400/50 rounded-tl-lg pointer-events-none z-10" />
+                  <div className="absolute top-3 right-3 w-8 h-8 border-r-2 border-t-2 border-sky-400/50 rounded-tr-lg pointer-events-none z-10" />
+                  <div className="absolute bottom-3 left-3 w-8 h-8 border-l-2 border-b-2 border-sky-400/50 rounded-bl-lg pointer-events-none z-10" />
+                  <div className="absolute bottom-3 right-3 w-8 h-8 border-r-2 border-b-2 border-sky-400/50 rounded-br-lg pointer-events-none z-10" />
 
                   {/* Camera Error Message */}
                   {cameraError && (
-                    <div className="absolute inset-0 flex flex-col items-center justify-center p-6 bg-navy-950/90 text-center z-20">
+                    <div className="absolute inset-0 flex flex-col items-center justify-center p-6 bg-navy-950/90 text-center z-30">
                       <AlertCircle className="w-12 h-12 text-rose-400 mb-3" />
                       <p className="text-white font-semibold text-lg mb-1">
                         Camera Unavailable
                       </p>
                       <p className="text-slate-400 text-sm max-w-sm mb-4">
-                        {cameraError}. You can switch to the Sample Jump Clip or upload a video instead.
+                        {cameraError}. Please upload a recorded jump video file instead.
                       </p>
                       <button
-                        onClick={() => switchSource('sample-1')}
+                        onClick={() => fileInputRef.current?.click()}
                         className="btn-primary text-xs"
                       >
-                        Use Sample Jump Clip
+                        Upload Athlete Video
                       </button>
                     </div>
                   )}
 
-                  {/* Real-time HUD Badges */}
-                  <div className="absolute top-3 left-3 right-3 flex items-center justify-between pointer-events-none z-10">
-                    {/* Phase Badge */}
-                    <div
-                      className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border backdrop-blur-md ${currentPhaseStyle.bg} ${currentPhaseStyle.border}`}
-                    >
-                      <span
-                        className={`w-2 h-2 rounded-full ${
-                          telemetry.phase === 'FLIGHT'
-                            ? 'bg-pink-400 animate-ping'
-                            : 'bg-emerald-400'
-                        }`}
+                  {/* MODE A: If video is loaded or camera active -> render real video + canvas */}
+                  {isVideoLoaded ? (
+                    <>
+                      <video
+                        ref={videoRef}
+                        playsInline
+                        muted
+                        onPlay={() => setIsPlaying(true)}
+                        onPause={() => setIsPlaying(false)}
+                        className="w-full h-full object-contain"
                       />
-                      <span
-                        className={`text-xs font-bold font-mono tracking-wider ${currentPhaseStyle.text}`}
+
+                      <canvas
+                        ref={canvasRef}
+                        className="absolute inset-0 pointer-events-none w-full h-full object-contain"
+                      />
+
+                      {/* Real-time HUD Badges */}
+                      <div className="absolute top-3 left-3 right-3 flex items-center justify-between pointer-events-none z-10">
+                        {/* Phase Badge */}
+                        <div
+                          className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border backdrop-blur-md ${currentPhaseStyle.bg} ${currentPhaseStyle.border}`}
+                        >
+                          <span
+                            className={`w-2 h-2 rounded-full ${
+                              telemetry.phase === 'FLIGHT'
+                                ? 'bg-pink-400 animate-ping'
+                                : 'bg-emerald-400'
+                            }`}
+                          />
+                          <span
+                            className={`text-xs font-bold font-mono tracking-wider ${currentPhaseStyle.text}`}
+                          >
+                            PHASE: {telemetry.phase}
+                          </span>
+                        </div>
+
+                        {/* AI Confidence Badge */}
+                        <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-navy-900/80 border border-navy-700/60 backdrop-blur-md">
+                          <Bot className="w-3.5 h-3.5 text-sky-400" />
+                          <span className="text-xs font-mono text-slate-300 font-semibold">
+                            {telemetry.aiConfidence}% AI Conf
+                          </span>
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    /* MODE B: Default Placeholder SVG Demo */
+                    <div className="relative w-full h-full flex flex-col items-center justify-center p-6">
+                      {/* Scanning animation bar */}
+                      <div className="absolute inset-0 z-20 pointer-events-none">
+                        <div className="absolute inset-x-0 h-1 bg-gradient-to-r from-transparent via-sky-400 to-transparent animate-scan shadow-glow-blue" />
+                      </div>
+
+                      {/* Original SVG Pose Stick-figure */}
+                      <svg
+                        viewBox="0 0 200 150"
+                        className="relative h-48 w-auto z-10 pb-4"
                       >
-                        PHASE: {telemetry.phase}
-                      </span>
-                    </div>
+                        {/* Body silhouette */}
+                        <ellipse
+                          cx="100"
+                          cy="30"
+                          rx="12"
+                          ry="14"
+                          fill="white"
+                          opacity="0.1"
+                        />
+                        <path
+                          d="M100 44 L100 90 M100 54 L82 78 M100 54 L118 78 M100 90 L90 130 M100 90 L110 130"
+                          stroke="white"
+                          strokeWidth="8"
+                          strokeLinecap="round"
+                          opacity="0.1"
+                          fill="none"
+                        />
+                        {/* Pose lines */}
+                        <g
+                          stroke="#38BDF8"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          fill="none"
+                        >
+                          <line x1="100" y1="30" x2="100" y2="44" />
+                          <line x1="100" y1="44" x2="100" y2="90" />
+                          <line x1="100" y1="54" x2="82" y2="78" />
+                          <line x1="100" y1="54" x2="118" y2="78" />
+                          <line x1="100" y1="90" x2="90" y2="130" />
+                          <line x1="100" y1="90" x2="110" y2="130" />
+                        </g>
+                        {/* Pose dots with pulse */}
+                        {[
+                          [100, 30],
+                          [100, 44],
+                          [100, 54],
+                          [100, 90],
+                          [82, 78],
+                          [118, 78],
+                          [90, 130],
+                          [110, 130],
+                        ].map(([cx, cy], i) => (
+                          <g key={i}>
+                            <circle cx={cx} cy={cy} r="4" fill="white" />
+                            <circle cx={cx} cy={cy} r="2.5" fill="#38BDF8" />
+                            <circle
+                              cx={cx}
+                              cy={cy}
+                              r="2.5"
+                              fill="#38BDF8"
+                              opacity="0.5"
+                            >
+                              <animate
+                                attributeName="r"
+                                values="2.5;6;2.5"
+                                dur="1.5s"
+                                begin={`${i * 0.12}s`}
+                                repeatCount="indefinite"
+                              />
+                              <animate
+                                attributeName="opacity"
+                                values="0.5;0;0.5"
+                                dur="1.5s"
+                                begin={`${i * 0.12}s`}
+                                repeatCount="indefinite"
+                              />
+                            </circle>
+                          </g>
+                        ))}
+                      </svg>
 
-                    {/* AI Confidence Badge */}
-                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-navy-900/80 border border-navy-700/60 backdrop-blur-md">
-                      <Bot className="w-3.5 h-3.5 text-sky-400" />
-                      <span className="text-xs font-mono text-slate-300 font-semibold">
-                        {telemetry.aiConfidence}% AI Conf
-                      </span>
-                    </div>
-                  </div>
+                      {/* Status indicator */}
+                      <div className="absolute top-3 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-black/50 backdrop-blur-md rounded-full px-3 py-1.5 border border-white/10 z-20">
+                        <div className="w-2 h-2 rounded-full bg-sky-400 animate-pulse" />
+                        <span className="text-white/90 text-xs font-mono font-semibold">
+                          DEMO PREVIEW — READY FOR VIDEO
+                        </span>
+                      </div>
 
-                  {/* Corner Targets */}
-                  <div className="absolute top-2 left-2 w-6 h-6 border-l-2 border-t-2 border-sky-400/40 pointer-events-none" />
-                  <div className="absolute top-2 right-2 w-6 h-6 border-r-2 border-t-2 border-sky-400/40 pointer-events-none" />
-                  <div className="absolute bottom-2 left-2 w-6 h-6 border-l-2 border-b-2 border-sky-400/40 pointer-events-none" />
-                  <div className="absolute bottom-2 right-2 w-6 h-6 border-r-2 border-b-2 border-sky-400/40 pointer-events-none" />
+                      {/* Prompt to upload */}
+                      <div className="z-20 text-center bg-navy-950/80 backdrop-blur-sm px-4 py-2 rounded-xl border border-white/10">
+                        <p className="text-xs text-slate-300 font-medium">
+                          Upload an athlete jump video (.mp4, .mov, .webm) or open camera to begin
+                        </p>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
-                {/* Video Playback Controls Bar */}
-                {sourceMode !== 'camera' && (
+                {/* Video Playback Controls Bar (shown only when a video is loaded) */}
+                {isVideoLoaded && !isCameraActive && (
                   <div className="mt-3 flex items-center justify-between px-2 pt-2 border-t border-navy-800 text-white">
                     <div className="flex items-center gap-3">
                       <button
@@ -492,127 +582,162 @@ export default function TrialJumpPage({
                       </button>
                     </div>
 
-                    <span className="text-xs text-slate-400 font-mono">
-                      {uploadedFileName ||
-                        (sourceMode === 'sample-1'
-                          ? 'Basketball (360x640)'
-                          : sourceMode === 'sample-2'
-                          ? 'Track Athlete (1280x720)'
-                          : '')}
+                    <span className="text-xs text-slate-400 font-mono truncate max-w-[200px]">
+                      {uploadedFileName || 'Athlete Video'}
                     </span>
                   </div>
                 )}
               </div>
             </div>
 
-            {/* Live Kinematic Telemetry Panel */}
+            {/* Right Col: Telemetry / Guidance Panel */}
             <div className="space-y-4">
-              {/* Telemetry Card */}
-              <div className="card p-5">
-                <div className="flex items-center gap-2 mb-4 pb-3 border-b border-slate-100">
-                  <div className="w-8 h-8 rounded-xl bg-royal-50 flex items-center justify-center">
-                    <Gauge className="w-4 h-4 text-royal-600" />
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-navy-900 text-sm">
-                      Live Biomechanical Telemetry
-                    </h3>
-                    <p className="text-xs text-slate-400">
-                      Newtonian kinematics & angles
-                    </p>
-                  </div>
-                </div>
-
-                {/* Metric 1: Knee Flexion Angle */}
-                <div className="p-3.5 rounded-xl bg-slate-50 mb-3 border border-slate-100">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs text-slate-500 font-semibold">
-                      Knee Flexion Angle
-                    </span>
-                    <span
-                      className={`text-sm font-bold font-mono ${
-                        telemetry.kneeAngle < 120
-                          ? 'text-emerald-600'
-                          : 'text-royal-600'
-                      }`}
-                    >
-                      {telemetry.kneeAngle}°
-                    </span>
-                  </div>
-                  <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-gradient-to-r from-royal-500 to-emerald-500 transition-all duration-100"
-                      style={{
-                        width: `${Math.min(
-                          100,
-                          Math.max(10, (telemetry.kneeAngle / 180) * 100)
-                        )}%`,
-                      }}
-                    />
-                  </div>
-                  <span className="text-[10px] text-slate-400 mt-1 block">
-                    Target squat depth: 90° - 110°
-                  </span>
-                </div>
-
-                {/* Metric 2: Flight Time */}
-                <div className="p-3.5 rounded-xl bg-slate-50 mb-3 border border-slate-100">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs text-slate-500 font-semibold flex items-center gap-1.5">
-                      <Timer className="w-3.5 h-3.5 text-royal-600" />
-                      Flight Duration
-                    </span>
-                    <span className="text-sm font-bold font-mono text-navy-900">
-                      {telemetry.flightDuration > 0
-                        ? `${telemetry.flightDuration.toFixed(2)} s`
-                        : '--'}
-                    </span>
-                  </div>
-                  <p className="text-[10px] text-slate-400">
-                    Formula: h = (g · t²) / 8
-                  </p>
-                </div>
-
-                {/* Metric 3: Calculated Jump Height */}
-                <div className="p-3.5 rounded-xl bg-gradient-to-br from-royal-50 to-sky-50 border border-royal-100 mb-4">
-                  <div className="flex items-center justify-between">
+              {isVideoLoaded ? (
+                /* Active Telemetry when video or camera is running */
+                <div className="card p-5">
+                  <div className="flex items-center gap-2 mb-4 pb-3 border-b border-slate-100">
+                    <div className="w-8 h-8 rounded-xl bg-royal-50 flex items-center justify-center">
+                      <Gauge className="w-4 h-4 text-royal-600" />
+                    </div>
                     <div>
-                      <span className="text-xs text-royal-700 font-semibold block">
-                        Estimated Apex Height
-                      </span>
-                      <p className="font-display text-3xl font-extrabold text-navy-900">
-                        {telemetry.calculatedHeight > 0
-                          ? `${telemetry.calculatedHeight} cm`
-                          : '42.4 cm'}
+                      <h3 className="font-bold text-navy-900 text-sm">
+                        Live Biomechanical Telemetry
+                      </h3>
+                      <p className="text-xs text-slate-400">
+                        Newtonian kinematics & angles
                       </p>
                     </div>
-                    <div className="w-10 h-10 rounded-xl bg-royal-600 text-white flex items-center justify-center font-bold text-xs">
-                      APEX
+                  </div>
+
+                  {/* Metric 1: Knee Flexion Angle */}
+                  <div className="p-3.5 rounded-xl bg-slate-50 mb-3 border border-slate-100">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs text-slate-500 font-semibold">
+                        Knee Flexion Angle
+                      </span>
+                      <span
+                        className={`text-sm font-bold font-mono ${
+                          telemetry.kneeAngle < 120
+                            ? 'text-emerald-600'
+                            : 'text-royal-600'
+                        }`}
+                      >
+                        {telemetry.kneeAngle}°
+                      </span>
+                    </div>
+                    <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-gradient-to-r from-royal-500 to-emerald-500 transition-all duration-100"
+                        style={{
+                          width: `${Math.min(
+                            100,
+                            Math.max(10, (telemetry.kneeAngle / 180) * 100)
+                          )}%`,
+                        }}
+                      />
+                    </div>
+                    <span className="text-[10px] text-slate-400 mt-1 block">
+                      Target squat depth: 90° - 110°
+                    </span>
+                  </div>
+
+                  {/* Metric 2: Flight Time */}
+                  <div className="p-3.5 rounded-xl bg-slate-50 mb-3 border border-slate-100">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs text-slate-500 font-semibold flex items-center gap-1.5">
+                        <Timer className="w-3.5 h-3.5 text-royal-600" />
+                        Flight Duration
+                      </span>
+                      <span className="text-sm font-bold font-mono text-navy-900">
+                        {telemetry.flightDuration > 0
+                          ? `${telemetry.flightDuration.toFixed(2)} s`
+                          : '--'}
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-slate-400">
+                      Formula: h = (g · t²) / 8
+                    </p>
+                  </div>
+
+                  {/* Metric 3: Calculated Jump Height */}
+                  <div className="p-3.5 rounded-xl bg-gradient-to-br from-royal-50 to-sky-50 border border-royal-100 mb-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <span className="text-xs text-royal-700 font-semibold block">
+                          Estimated Apex Height
+                        </span>
+                        <p className="font-display text-3xl font-extrabold text-navy-900">
+                          {telemetry.calculatedHeight > 0
+                            ? `${telemetry.calculatedHeight} cm`
+                            : '--'}
+                        </p>
+                      </div>
+                      <div className="w-10 h-10 rounded-xl bg-royal-600 text-white flex items-center justify-center font-bold text-xs">
+                        APEX
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                {/* Action Button: View Full Scorecard */}
-                <button
-                  onClick={handleCompleteTrial}
-                  className="btn-primary w-full text-sm py-3 justify-center shadow-lg shadow-royal-600/30 group"
-                >
-                  <span>Analyze & View Official Scorecard</span>
-                  <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
-                </button>
-              </div>
+                  {/* Action Button: View Full Scorecard */}
+                  <button
+                    onClick={handleCompleteTrial}
+                    className="btn-primary w-full text-sm py-3 justify-center shadow-lg shadow-royal-600/30 group"
+                  >
+                    <span>Analyze & View Official Scorecard</span>
+                    <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+                  </button>
+                </div>
+              ) : (
+                /* Default Guidance Card when in SVG Demo Mode */
+                <div className="card p-6">
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="w-8 h-8 rounded-xl bg-green-50 flex items-center justify-center">
+                      <CheckCircle2 className="w-4 h-4 text-green-600" />
+                    </div>
+                    <h3 className="font-bold text-navy-900">AI Readiness</h3>
+                  </div>
+
+                  <div className="space-y-3 mb-6">
+                    {READINESS.map((item) => (
+                      <div key={item.label} className="flex items-center gap-2.5">
+                        <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                        <span className="text-sm font-medium text-slate-700">
+                          {item.label}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="pt-4 border-t border-slate-100 space-y-2">
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      className="btn-primary w-full text-sm justify-center"
+                    >
+                      <Upload className="w-4 h-4" />
+                      Select Video File
+                    </button>
+                    <button
+                      onClick={startCamera}
+                      className="btn-secondary w-full text-sm justify-center"
+                    >
+                      <Camera className="w-4 h-4" />
+                      Open Live Webcam
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {/* Protocol Tips */}
               <div className="p-4 rounded-2xl bg-white border border-slate-200/80 text-xs space-y-2">
                 <div className="flex items-center gap-2 font-semibold text-slate-700">
                   <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                  Scouting Checklist
+                  Protocol Guidelines
                 </div>
                 <p className="text-slate-500">
-                  • Ensure ankles and full feet are within frame during takeoff.
+                  • Stand 3-4 meters back with full body visible from head to feet.
                 </p>
                 <p className="text-slate-500">
-                  • MediaPipe detects 33 3D coordinates via WebGPU/WASM in browser.
+                  • Perform a maximal countermovement jump with explosive vertical intent.
                 </p>
               </div>
             </div>

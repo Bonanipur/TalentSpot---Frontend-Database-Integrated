@@ -375,7 +375,7 @@ export default function TrialJumpPage({
                   {/* High-Precision Real-time Canvas Skeleton Overlay */}
                   <canvas
                     ref={canvasRef}
-                    className="absolute inset-0 pointer-events-none w-full h-full"
+                    className="absolute inset-0 pointer-events-none w-full h-full object-contain"
                   />
 
                   {/* Camera Error Message */}

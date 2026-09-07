@@ -1,7 +1,7 @@
 {
-  "name": "vite-react-typescript-starter",
-  "private": true,
-  "version": "0.0.0",
+  "name": "talentspot",
+  "version": "1.0.0",
+  "description": "AI-powered sports talent identification and assessment platform",
   "type": "module",
   "scripts": {
     "dev": "vite",

@@ -231,16 +231,17 @@ export default function TrialJumpPage({
     }
   };
 
-  // Finalize & Navigate to Results
+  // Finalize & Navigate to Results (strictly requires measured kinematics)
   const handleCompleteTrial = () => {
     const measuredHeight =
       telemetry.calculatedHeight > 0
         ? telemetry.calculatedHeight
-        : Math.round(
-            calculateFlightJumpHeight(
-              telemetry.flightDuration > 0 ? telemetry.flightDuration : 0.58
-            ) * 10
-          ) / 10 || 41;
+        : telemetry.flightDuration > 0
+        ? Math.round(calculateFlightJumpHeight(telemetry.flightDuration) * 10) / 10
+        : 0;
+
+    // Do not allow navigating without a genuine measured jump
+    if (measuredHeight <= 0) return;
 
     const { watts, score: powerScore } = calculateSayersPower(
       measuredHeight,
@@ -316,6 +317,8 @@ export default function TrialJumpPage({
     phaseColors[telemetry.phase] || phaseColors.STAND;
 
   const isVideoLoaded = Boolean(videoUrl || isCameraActive);
+  const isAnalysisReady =
+    telemetry.calculatedHeight > 0 || telemetry.phase === 'COMPLETE';
 
   return (
     <div className="bg-mesh min-h-[calc(100vh-4rem)] py-8">
@@ -444,8 +447,14 @@ export default function TrialJumpPage({
                     playsInline
                     muted
                     loop
-                    onPlay={() => setIsPlaying(true)}
-                    onPause={() => setIsPlaying(false)}
+                    onPlay={() => {
+                      setIsPlaying(true);
+                      startProcessing();
+                    }}
+                    onPause={() => {
+                      setIsPlaying(false);
+                      stopProcessing();
+                    }}
                     className={`w-full h-full object-contain ${
                       isVideoLoaded ? 'block z-10' : 'hidden'
                     }`}
@@ -729,10 +738,27 @@ export default function TrialJumpPage({
                   {/* Action Button: View Full Scorecard */}
                   <button
                     onClick={handleCompleteTrial}
-                    className="btn-primary w-full text-sm py-3 justify-center shadow-lg shadow-royal-600/30 group"
+                    disabled={!isAnalysisReady}
+                    className={`w-full text-sm py-3 justify-center shadow-lg transition-all flex items-center gap-2 rounded-xl font-bold ${
+                      isAnalysisReady
+                        ? 'btn-primary shadow-royal-600/30 cursor-pointer group'
+                        : 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200 shadow-none'
+                    }`}
                   >
-                    <span>Analyze & View Official Scorecard</span>
-                    <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+                    <span>
+                      {isAnalysisReady
+                        ? 'Analyze & View Official Scorecard'
+                        : telemetry.phase === 'STAND'
+                        ? 'Awaiting Jump Takeoff...'
+                        : telemetry.phase === 'SQUAT'
+                        ? 'Squat Detected — Awaiting Jump...'
+                        : telemetry.phase === 'FLIGHT'
+                        ? 'In Flight — Awaiting Landing...'
+                        : 'Analyzing Jump Kinematics...'}
+                    </span>
+                    {isAnalysisReady && (
+                      <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+                    )}
                   </button>
                 </div>
               ) : (

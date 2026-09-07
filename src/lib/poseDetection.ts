@@ -57,10 +57,11 @@ export async function getPoseLandmarker(): Promise<PoseLandmarker> {
   isInitializing = true;
 
   try {
-    // 1. Resolve WASM assets
-    const vision = await FilesetResolver.forVisionTasks(
-      'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.18/wasm'
-    );
+    // 1. Resolve WASM assets matching installed @mediapipe/tasks-vision version
+    const TASKS_VISION_VERSION = '1.0.1';
+    const WASM_CDN_PATH = `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${TASKS_VISION_VERSION}/wasm`;
+
+    const vision = await FilesetResolver.forVisionTasks(WASM_CDN_PATH);
 
     // 2. Initialize Pose Landmarker with lightweight float16 model
     poseLandmarkerInstance = await PoseLandmarker.createFromOptions(vision, {
@@ -80,9 +81,10 @@ export async function getPoseLandmarker(): Promise<PoseLandmarker> {
   } catch (err) {
     console.warn('GPU/local model failed, trying fallback to CDN model URL:', err);
     try {
-      const vision = await FilesetResolver.forVisionTasks(
-        'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.18/wasm'
-      );
+      const TASKS_VISION_VERSION = '1.0.1';
+      const WASM_CDN_PATH = `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${TASKS_VISION_VERSION}/wasm`;
+
+      const vision = await FilesetResolver.forVisionTasks(WASM_CDN_PATH);
       poseLandmarkerInstance = await PoseLandmarker.createFromOptions(vision, {
         baseOptions: {
           modelAssetPath:

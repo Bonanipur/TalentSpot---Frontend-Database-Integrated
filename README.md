@@ -137,6 +137,7 @@ npm run preview
 
 For in-depth engineering details, consult the dedicated guides in the [`docs/`](docs/) directory:
 
+- ⚡ [**V2 Computer Vision & Kinematics Specification**](docs/V2_SYSTEM_SPECIFICATION.md) — Real-time MediaPipe Pose pipeline, Newtonian flight-time kinematics ($h = gt^2/8$), Sayers power formulas, and persistent DOM video lifecycle.
 - 🏛️ [**Architecture & Component Design**](docs/ARCHITECTURE.md) — Comprehensive breakdown of the state-based screen router, component hierarchy, SVG visualization engine, and animation hooks.
 - 📊 [**Data Models & Database Schemas**](docs/DATA_MODELS.md) — Complete TypeScript data contracts, assessment scoring formulas, and production-ready Supabase PostgreSQL schemas with Row Level Security (RLS).
 - 🚀 [**System Improvement Suggestions**](docs/SYSTEM_SUGGESTIONS.md) — Strategic engineering roadmap covering on-device MediaPipe computer vision, offline-first PWA for rural scouting grounds, and Sports Authority of India (SAI) national benchmarking.

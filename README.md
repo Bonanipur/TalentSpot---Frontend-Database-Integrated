@@ -23,13 +23,13 @@ In many regions across India, exceptional raw athletic talent in rural and semi-
 
 | Feature | Description | Key Modules |
 | :--- | :--- | :--- |
-| **👤 Athlete Registration** | Rapid onboarding of emerging talent capturing age, gender, state, district, and sport. Generates unique scout badges (e.g. `TS-1024`). | [`RegisterPage.tsx`](file:///d:/OpenSource/TalentSpot/src/pages/RegisterPage.tsx) |
-| **🏃 Assessment Protocol Hub** | Standardized testing battery featuring Vertical Jump (Explosive Power), 30m Sprint (Speed), and Agility Shuttle Runs. | [`AssessPage.tsx`](file:///d:/OpenSource/TalentSpot/src/pages/AssessPage.tsx) |
-| **🤖 AI Pose Tracking** | Live camera pre-check with dynamic SVG human skeleton overlay tracking 14 anatomical joints, knee flexion angles, and apex height. | [`TrialJumpPage.tsx`](file:///d:/OpenSource/TalentSpot/src/pages/TrialJumpPage.tsx), [`AthleteViz.tsx`](file:///d:/OpenSource/TalentSpot/src/components/AthleteViz.tsx) |
-| **📊 Real-time Scoring** | Instant post-trial scorecard calculating explosive power wattage, AI confidence score, and composite talent tier (`High`, `Medium`, `Low`). | [`ResultsPage.tsx`](file:///d:/OpenSource/TalentSpot/src/pages/ResultsPage.tsx) |
-| **🗺️ Geographic Talent Heatmap** | Interactive SVG map of India illustrating regional scout density, athlete counts, and top regional sports disciplines. | [`DashboardPage.tsx`](file:///d:/OpenSource/TalentSpot/src/pages/DashboardPage.tsx) |
-| **📋 Athlete Directory** | Searchable roster filterable by Indian state, district, sport, and potential rating with one-click profile access. | [`AthletesPage.tsx`](file:///d:/OpenSource/TalentSpot/src/pages/AthletesPage.tsx) |
-| **📈 Athlete Biometric Dossier** | Comprehensive talent profile featuring 6-axis radar charts, historical performance curves, and anthropometric metrics. | [`ProfilePage.tsx`](file:///d:/OpenSource/TalentSpot/src/pages/ProfilePage.tsx) |
+| **👤 Athlete Registration** | Rapid onboarding of emerging talent capturing age, gender, state, district, and sport. Generates unique scout badges (e.g. `TS-1024`). | [`RegisterPage.tsx`](src/pages/RegisterPage.tsx) |
+| **🏃 Assessment Protocol Hub** | Standardized testing battery featuring Vertical Jump (Explosive Power), 30m Sprint (Speed), and Agility Shuttle Runs. | [`AssessPage.tsx`](src/pages/AssessPage.tsx) |
+| **🤖 AI Pose Tracking** | Live camera pre-check with dynamic SVG human skeleton overlay tracking 14 anatomical joints, knee flexion angles, and apex height. | [`TrialJumpPage.tsx`](src/pages/TrialJumpPage.tsx), [`AthleteViz.tsx`](src/components/AthleteViz.tsx) |
+| **📊 Real-time Scoring** | Instant post-trial scorecard calculating explosive power wattage, AI confidence score, and composite talent tier (`High`, `Medium`, `Low`). | [`ResultsPage.tsx`](src/pages/ResultsPage.tsx) |
+| **🗺️ Geographic Talent Heatmap** | Interactive SVG map of India illustrating regional scout density, athlete counts, and top regional sports disciplines. | [`DashboardPage.tsx`](src/pages/DashboardPage.tsx) |
+| **📋 Athlete Directory** | Searchable roster filterable by Indian state, district, sport, and potential rating with one-click profile access. | [`AthletesPage.tsx`](src/pages/AthletesPage.tsx) |
+| **📈 Athlete Biometric Dossier** | Comprehensive talent profile featuring speed, power, and agility metric gauges, historical performance curves, and anthropometric metrics. | [`ProfilePage.tsx`](src/pages/ProfilePage.tsx) |
 
 ---
 
@@ -39,7 +39,7 @@ In many regions across India, exceptional raw athletic talent in rural and semi-
 - **Build Tool & Bundler**: [Vite 5](https://vitejs.dev/) with Fast Refresh
 - **Styling**: [Tailwind CSS 3.4](https://tailwindcss.com/) with custom sports color palettes (Royal, Gold, Emerald, Purple)
 - **Icons**: [Lucide React](https://lucide.dev/)
-- **Visualization**: Mathematical inline SVG rendering (Skeleton tracking, Radar biometrics, India talent map)
+- **Visualization**: Mathematical inline SVG rendering (Skeleton tracking, circular score gauges, India talent map)
 - **Backend / Database Client**: [`@supabase/supabase-js`](https://supabase.com/docs/reference/javascript) (prepared for full cloud sync)
 
 ---
@@ -135,11 +135,11 @@ npm run preview
 
 ## 📚 Technical Documentation
 
-For in-depth engineering details, consult the dedicated guides in the [`docs/`](file:///d:/OpenSource/TalentSpot/docs/) directory:
+For in-depth engineering details, consult the dedicated guides in the [`docs/`](docs/) directory:
 
-- 🏛️ [**Architecture & Component Design**](file:///d:/OpenSource/TalentSpot/docs/ARCHITECTURE.md) — Comprehensive breakdown of the state-based screen router, component hierarchy, SVG visualization engine, and animation hooks.
-- 📊 [**Data Models & Database Schemas**](file:///d:/OpenSource/TalentSpot/docs/DATA_MODELS.md) — Complete TypeScript data contracts, assessment scoring formulas, and production-ready Supabase PostgreSQL schemas with Row Level Security (RLS).
-- 🚀 [**System Improvement Suggestions**](file:///d:/OpenSource/TalentSpot/docs/SYSTEM_SUGGESTIONS.md) — Strategic engineering roadmap covering on-device MediaPipe computer vision, offline-first PWA for rural scouting grounds, and Sports Authority of India (SAI) national benchmarking.
+- 🏛️ [**Architecture & Component Design**](docs/ARCHITECTURE.md) — Comprehensive breakdown of the state-based screen router, component hierarchy, SVG visualization engine, and animation hooks.
+- 📊 [**Data Models & Database Schemas**](docs/DATA_MODELS.md) — Complete TypeScript data contracts, assessment scoring formulas, and production-ready Supabase PostgreSQL schemas with Row Level Security (RLS).
+- 🚀 [**System Improvement Suggestions**](docs/SYSTEM_SUGGESTIONS.md) — Strategic engineering roadmap covering on-device MediaPipe computer vision, offline-first PWA for rural scouting grounds, and Sports Authority of India (SAI) national benchmarking.
 
 ---
 

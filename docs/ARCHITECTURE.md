@@ -37,7 +37,7 @@ graph TD
 
 ## 2. Navigation & Routing State Machine
 
-Rather than relying on browser-level URL navigation, TalentSpot implements an ultra-responsive internal state router inside [`src/App.tsx`](file:///d:/OpenSource/TalentSpot/src/App.tsx).
+Rather than relying on browser-level URL navigation, TalentSpot implements an ultra-responsive internal state router inside [`src/App.tsx`](../src/App.tsx).
 
 ### Route Definition (`PageName`)
 ```typescript
@@ -134,15 +134,10 @@ TalentSpot avoids heavy external 3D engine overhead by implementing mathematical
 - Highlights talent scout coverage (Punjab, Haryana, Kerala, Maharashtra, Northeast, etc.).
 - Interactive state-level popover cards displaying discovered athlete counts and top sports.
 
-### 3. Biometric Radar Chart
-- Normalizes an athlete's physical attributes across 6 key axes:
-  - **Explosive Power**
-  - **Sprint Velocity**
-  - **Agility & Reaction**
-  - **Endurance**
-  - **Flexibility**
-  - **Biomechanical Balance**
-- Overlays individual athlete polygon over National Average benchmark polygon.
+### 3. Performance Metrics & History Visualizers
+- **Circular Score Gauges & Stat Bars (`CircularScore`)**: Visualizes individual metrics (Speed, Power, Agility) and composite overall ratings with calibrated color-coded performance bands.
+- **Historical Progress Chart (`HistoryChart`)**: Tracks performance progression across sequential trial evaluations over time.
+- **Biometric Radar Chart *(Planned / Roadmap)***: Future enhancement to normalize multi-axial athletic attributes against national age-bracket percentiles.
 
 ---
 
